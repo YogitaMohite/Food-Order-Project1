@@ -194,7 +194,7 @@ const MyProfileComponent = () => {
                 <div className="card">
                     <div className="card-body">
                     <div className="d-flex flex-column align-items-center text-center">
-                        <img src="https://bootdey.com/img/Content/avatar/avatar7.png" alt="Admin" className="rounded-circle" width="150"/>
+                        <img src="https://t4.ftcdn.net/jpg/06/43/68/65/360_F_643686558_Efl6HB1ITw98bx1PdAd1wy56QpUTMh47.jpg" alt="Admin" className="rounded-circle" width="150"/>
                         <div className="mt-3">
                         <h4>{firstName} {lastName}</h4>
                         <p className="text-secondary mb-1">Full Stack Developer</p>

@@ -1,239 +1,198 @@
-import MealService from '../../services/MealService'
-import React, {useState, useEffect} from 'react'
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import MealService from '../../services/MealService';
+import { Modal, Button } from 'react-bootstrap';
 import Swal from 'sweetalert2';
-import { Modal, Button } from 'react-bootstrap'
-import CreateMealComponent from './CreateMealComponent'
-import EditMealComponent from './EditMealComponent';
+import CreateMealComponent from './CreateMealComponent';
 import './ListMealComponent.css';
-import UserService from '../../services/UserService';
 
 const ListMealComponent = () => {
-
     const [meals, setMeals] = useState([]);
-    const fd =  new FormData();
-
-    const [id, setId] = useState(0);
-    const [name, setName] = useState('');
-    const [price, setPrice] = useState('');
-    const [image, setImage] = useState('');
-    const [imageName, setImageName] = useState('');
-
-    // ovo treba na bolji nacin, a ne ovako, mada ako se ne brise iz baze ovaj meal type, radice okej
-    // const [mealType, setMealType] = useState({id: 1, typeName: 'PIZZA'});
-    const [mealType, setMealType] = useState(undefined);
-
-    const [description, setDescription] = useState('');
+    const [mealTypes, setMealTypes] = useState([]);
 
     const [show, setShow] = useState(false);
-    const [showEdit, setShowEdit] = useState(false);
 
-    const [selectedFile, setSelectedFile] = useState(undefined);
+    const [meal, setMeal] = useState({
+        id: null,
+        name: '',
+        description: '',
+        price: '',
+        mealType: null
+    });
 
-    const file = {selectedFile, setSelectedFile};
+    const [selectedFile, setSelectedFile] = useState(null);
 
-    const meal = {id, name, price, image, imageName, mealType, description, setDescription, setName, setPrice, setImage, setImageName, setMealType}
-
+    // Load meals and meal types
     useEffect(() => {
         getAllMeals();
-    }, [])
-    
-    const getAllMeals = () =>{
-        MealService.getAllMeals().then((response) =>{
-            setMeals(response.data);
-            if(response.data[0].mealType) setMealType(response.data[0].mealType);
-        }).catch(error =>{
-            console.log(error);
-        })
-    }
+        getAllMealTypes();
+    }, []);
+
+    const getAllMeals = () => {
+        MealService.getAllMeals()
+            .then((res) => setMeals(res.data))
+            .catch((err) => console.log(err));
+    };
+
+    const getAllMealTypes = () => {
+        MealService.getAllMealTypes()
+            .then((res) => setMealTypes(res.data))
+            .catch((err) => console.log(err));
+    };
+
+    const resetMealForm = () => {
+        setMeal({
+            id: null,
+            name: '',
+            description: '',
+            price: '',
+            mealType: mealTypes[0] || null
+        });
+        setSelectedFile(null);
+    };
+
+    const handleShow = () => {
+        resetMealForm();
+        setShow(true);
+    };
 
     const handleClose = () => {
         setShow(false);
-        meal.setName('');
-        meal.setPrice('');
-        meal.setDescription('');
-        meal.setMealType(meals[0].mealType);
-        // meal.setMealType({id: 1, typeName: 'PIZZA'});
-        }
-
-    const handleCloseEdit = () => {
-        setShowEdit(false);
-        //meal.setId(0);
-        meal.setName('');
-        meal.setPrice('');
-        meal.setDescription('');
-        meal.setMealType(meals[0].mealType);
-        // meal.setMealType({id: 1, typeName: 'PIZZA'});
-        }
-    const handleShow = () => {
-        setShow(true);
-        setId(null); //mora ovako da se setuje, kada se vrsi izmena, nakon toga zapamti id od starog pa radi izmenu
+        resetMealForm();
     };
-
-    const handleShowEdit = (meal) => {
-        setShowEdit(true);
-        setId(meal.id);
-        setName(meal.name);
-        setPrice(meal.price);
-        setMealType(meal.mealType);
-        setDescription(meal.description);
-    };
-
-    const handleSubmitEdit = () => {
-        if(meal.name.trim() === "" || isNaN(parseInt(meal.price)) || parseInt(meal.price) < 0){
-            alert("Invalid input");
-        }
-        MealService.updateMeal(meal).then((response) =>{
-            const responseFromServer = response.data;
-            if(responseFromServer === "success"){
-                alert("Uspesno editovano");
-                handleCloseEdit();
-                getAllMeals();  
-            }
-            else if(responseFromServer === "invalid"){
-                alert("Invalid input");
-            }
-            else if(responseFromServer === "fail"){
-                alert("Failed to edit meal");
-            }
-        }) 
-    }
 
     const handleSubmit = () => {
-        if(meal.name.trim() === "" || meal.description.trim() === "" || isNaN(parseInt(meal.price)) || parseInt(meal.price) < 0){
-            alert("Invalid input");
+        if (
+            !meal.name.trim() ||
+            !meal.description.trim() ||
+            !meal.price ||
+            !meal.mealType ||
+            !selectedFile
+        ) {
+            alert('Please fill all fields correctly!');
+            return;
         }
-        else{
-            if(selectedFile != null && selectedFile != undefined){
-                fd.append('image', selectedFile);
-                fd.append('meal', JSON.stringify(meal));
-                console.log("Selected fileeee" + selectedFile);
-            }
-            else{
-                //mora img da ima, jer nece na back-u da se nastavi zahtev je ne sadrzi sliku. Morao bih verovatno drugi api endpoint da gadjam kad nema sliku
-                fd.append('image', selectedFile);
-                fd.append('meal', JSON.stringify(meal));
-            }
-                MealService.createMeal(fd).then((response) =>{
-                    const responseFromServer = response.data;
-                    if(responseFromServer === "success"){
-                        alert("Successfully added meal!");
-                        handleClose();
-                        getAllMeals(); 
-                    }
-                    else if(responseFromServer === "invalid"){
-                        alert("Invalid input")
-                    }
-                    else if(responseFromServer === "fail"){
-                        alert("Failed to add new meal")
-                    }
-                })
-            }
 
-    }
+        const fd = new FormData();
+        const mealToSend = { ...meal, price: parseFloat(meal.price) };
+        fd.append('image', selectedFile);
+        fd.append('meal', JSON.stringify(mealToSend));
 
+        MealService.createMeal(fd)
+            .then((res) => {
+                const response = res.data;
+                if (response === 'success') {
+                    alert('Successfully added meal!');
+                    handleClose();
+                    getAllMeals();
+                } else if (response === 'invalid') {
+                    alert('Invalid input — check MealType, price, or name');
+                } else if (response === 'fail') {
+                    alert('Failed to add new meal');
+                }
+            })
+            .catch((err) => {
+                console.log(err);
+                alert('Something went wrong!');
+            });
+    };
 
-    const deleteMeal = (mealId) =>{
-        MealService.deleteMeal(mealId).then((response) =>{
-            if(response.data === "success"){
-                alert("Succesfully deleted meal!");
-                getAllMeals();
-            }
-            else if(response.data === "fail"){
-                alert("Failed to delete meal!");
-            }     
-        }).catch(error => {
-            console.log(error);
-        })
-    }
-
-    const alertAreYouSureDelete = (id) =>{
-          Swal.fire({
+    const alertAreYouSureDelete = (id) => {
+        Swal.fire({
             title: 'Are you sure?',
-            text: "If you click yes, meal will be deleted!",
+            text: 'If you click yes, meal will be deleted!',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#3085d6',
             cancelButtonColor: '#d33',
             confirmButtonText: 'Yes, delete it!'
-          }).then((result) => {
+        }).then((result) => {
             if (result.isConfirmed) {
-              deleteMeal(id);
+                MealService.deleteMeal(id).then((res) => {
+                    if (res.data === 'success') {
+                        alert('Successfully deleted meal!');
+                        getAllMeals();
+                    } else {
+                        alert('Failed to delete meal!');
+                    }
+                });
             }
-          })
-        }
+        });
+    };
 
-  return (
-    <>
-    <div className='container'>
-            <h2 className='text-center'>Meal list</h2>
-            <button className="btn btn-success mb-2" onClick={handleShow}>Create new meal</button>
-            <table id="table" className='table table-hover tableElement'>
-                <thead className='thead-name'>
-                    <tr>
-                        <th className='theadth'>Meal ID</th>
-                        <th className='theadth'>Image</th>
-                        <th className='theadth'>Name</th>
-                        <th className='theadth'>Type</th>
-                        <th className='theadth'>Description</th>
-                        <th className='theadth'>Price</th>
-                        <th className='theadth'>Action</th>
-                    </tr>
-                </thead>
-                {/*mora src={"data:image/png;base64," + meal.image}, ne moze samo src={meal.image}  */}
-                <tbody>
-                    {meals.map(
-                        meal => <tr key={meal.id}>
-                            <td className='td-content'>{meal.id}</td>
-                            <td className='td-content-pic'>
-                              <img className='mealPic' src={"data:image/png;base64," + meal.image} alt=''/> 
-                            </td>  
-                            <td className='td-content'>{meal.name}</td>
-                            <td className='td-content'>{meal.mealType.typeName}</td>
-                            <td className='td-content'>{meal.description}</td>
-                            <td className='td-content'>{meal.price}</td>                         
-                            <td className='td-content'>
-                                <button className='btn btn-success' onClick={() =>handleShowEdit(meal)}>Update</button>
-                                <button className='btn btn-danger' onClick={() => alertAreYouSureDelete(meal.id)}
-                                    style={{ marginLeft: "5px" }}>Delete</button>
-                            </td>
+    return (
+        <>
+            <div className='container'>
+                <h2 className='text-center'>Meal List</h2>
+                <button className='btn btn-success mb-2' onClick={handleShow}>
+                    Create New Meal
+                </button>
+
+                <table className='table table-hover'>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Image</th>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Price</th>
+                            <th>Action</th>
                         </tr>
-                    )}
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody>
+                        {meals.map((m) => (
+                            <tr key={m.id}>
+                                <td>{m.id}</td>
+                                <td>
+                                    <img
+                                        className='mealPic'
+                                        src={`data:image/png;base64,${m.image}`}
+                                        alt=''
+                                    />
+                                </td>
+                                <td>{m.name}</td>
+                                <td>{m.mealType.typeName}</td>
+                                <td>{m.description}</td>
+                                <td>{m.price}</td>
+                                <td>
+                                    <button
+                                        className='btn btn-danger'
+                                        onClick={() => alertAreYouSureDelete(m.id)}
+                                    >
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
 
-        <Modal show={show} onHide={handleClose}>
+            {/* Modal for creating meal */}
+            <Modal show={show} onHide={handleClose}>
                 <Modal.Header closeButton>
-                    <Modal.Title>Create new meal</Modal.Title>
+                    <Modal.Title>Create New Meal</Modal.Title>
                 </Modal.Header>
-
                 <Modal.Body>
-                    <CreateMealComponent meal={meal} file = {file}/>
+                    <CreateMealComponent
+                        meal={meal}
+                        setMeal={setMeal}
+                        selectedFile={selectedFile}
+                        setSelectedFile={setSelectedFile}
+                        mealTypes={mealTypes}
+                    />
                 </Modal.Body>
-
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={handleClose}>Close</Button>
-                    <Button variant="primary" onClick={handleSubmit}>Save changes</Button>
-                </Modal.Footer>
-            </Modal>
-
-            <Modal show={showEdit} onHide={handleCloseEdit}>
-                <Modal.Header closeButton>
-                    <Modal.Title>Edit meal</Modal.Title>
-                </Modal.Header>
-
-                <Modal.Body>
-                    <EditMealComponent meal={meal} file = {file}/>
-                </Modal.Body>
-
-                <Modal.Footer>
-                    <Button variant="secondary" onClick={handleCloseEdit}>Close</Button>
-                    <Button variant="primary" onClick={handleSubmitEdit}>Save changes</Button>
+                    <Button variant='secondary' onClick={handleClose}>
+                        Close
+                    </Button>
+                    <Button variant='primary' onClick={handleSubmit}>
+                        Save
+                    </Button>
                 </Modal.Footer>
             </Modal>
         </>
-  )
-}
+    );
+};
 
-export default ListMealComponent
+export default ListMealComponent;

@@ -8,7 +8,12 @@ class MealTypeService{
     }
     createMealType(fd){
         TokenService.setTokenInHeader();
-        return axios.post("http://localhost:8080/api/mealType/createMealType", fd);
+        return axios.post("http://localhost:8080/api/mealType/createMealType", fd,
+        {
+            headers: {
+                "Content-Type": "multipart/form-data"
+            }
+        });
     }
 
     deleteMealType(mealTypeId){
